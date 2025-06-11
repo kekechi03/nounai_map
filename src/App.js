@@ -19,6 +19,7 @@ function App() {
   const [words, setWords] = useState([]);
   const [input, setInput] = useState('');
   const [particles, setParticles] = useState([]); // パーティクル演出用
+  const [pressing, setPressing] = useState({}); // { [word]: {start: timestamp, progress: 0~1, timerId} }
   const engineRef = useRef();
   const [_, setTick] = useState(0);
 
@@ -190,6 +191,12 @@ function App() {
       >
         {bodies.map((body, idx) => {
           const word = body.label.slice(5);
+          const press = pressing[word] || { progress: 0 };
+          // 色補間: progress=0で白、progress=1で赤
+          const r = Math.round(255 * (1 - press.progress) + 255 * press.progress);
+          const g = Math.round(255 * (1 - press.progress));
+          const b = Math.round(255 * (1 - press.progress));
+          const bgColor = `rgb(${r},${g},${b})`;
           return (
             <div
               key={word}
@@ -200,7 +207,7 @@ function App() {
                 width: 64,
                 height: 64,
                 borderRadius: '50%',
-                background: '#fff',
+                background: bgColor,
                 border: '2px solid #888',
                 display: 'flex',
                 alignItems: 'center',
@@ -211,7 +218,32 @@ function App() {
                 boxShadow: '0 2px 8px #aaa',
                 userSelect: 'none',
                 cursor: 'pointer',
-                transition: 'background 0.2s',
+                transition: 'background 0.15s',
+              }}
+              onMouseDown={() => {
+                if (pressing[word]) return;
+                const start = Date.now();
+                const timerId = setInterval(() => {
+                  const now = Date.now();
+                  const progress = Math.min(1, (now - start) / 1000);
+                  setPressing(p => ({ ...p, [word]: { start, progress, timerId } }));
+                  if (progress >= 1) {
+                    clearInterval(timerId);
+                  }
+                }, 30);
+                setPressing(p => ({ ...p, [word]: { start, progress: 0, timerId } }));
+              }}
+              onMouseUp={() => {
+                if (pressing[word]) {
+                  clearInterval(pressing[word].timerId);
+                  setPressing(p => { const cp = { ...p }; delete cp[word]; return cp; });
+                }
+              }}
+              onMouseLeave={() => {
+                if (pressing[word]) {
+                  clearInterval(pressing[word].timerId);
+                  setPressing(p => { const cp = { ...p }; delete cp[word]; return cp; });
+                }
               }}
             >
               {word}
