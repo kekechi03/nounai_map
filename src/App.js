@@ -18,7 +18,7 @@ function App() {
   const sceneRef = useRef();
   const [words, setWords] = useState([]);
   const [input, setInput] = useState('');
-  const [poppingWords, setPoppingWords] = useState([]); // 消滅アニメーション中の単語
+  const [particles, setParticles] = useState([]); // パーティクル演出用
   const engineRef = useRef();
   const [_, setTick] = useState(0);
 
@@ -114,18 +114,43 @@ function App() {
         const dy = body.position.y - y;
         if (dx * dx + dy * dy < 32 * 32) {
           const word = body.label.slice(5);
-          // すでにポップ中なら無視
-          setPoppingWords(pw => pw.includes(word) ? pw : [...pw, word]);
-          // アニメーション後に削除
-          setTimeout(() => {
-            setWords(ws => ws.filter(w => w !== word));
-            setPoppingWords(pw => pw.filter(w => w !== word));
-          }, 350); // 350msで消滅
+          // クリック位置のbody座標取得
+          const bx = body.position.x;
+          const by = body.position.y;
+          // 文字は即消去
+          setWords(ws => ws.filter(w => w !== word));
+          // パーティクル生成
+          const PARTICLE_COUNT = 10;
+          const newParticles = [];
+          for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const angle = (2 * Math.PI * i) / PARTICLE_COUNT + Math.random() * 0.12;
+            const dist = 60 + Math.random() * 10;
+            newParticles.push({
+              id: `${word}_${Date.now()}_${i}`,
+              x: bx,
+              y: by,
+              angle,
+              dist,
+              start: Date.now(),
+              duration: 400 + Math.random() * 120
+            });
+          }
+          setParticles(ps => [...ps, ...newParticles]);
           break;
         }
       }
     }
   };
+
+  // パーティクル自動消去
+  useEffect(() => {
+    if (!particles.length) return;
+    const timer = setInterval(() => {
+      const now = Date.now();
+      setParticles(ps => ps.filter(p => now - p.start < p.duration));
+    }, 80);
+    return () => clearInterval(timer);
+  }, [particles]);
 
 
   // 描画
@@ -165,7 +190,6 @@ function App() {
       >
         {bodies.map((body, idx) => {
           const word = body.label.slice(5);
-          const popping = poppingWords.includes(word);
           return (
             <div
               key={word}
@@ -186,16 +210,40 @@ function App() {
                 color: '#444',
                 boxShadow: '0 2px 8px #aaa',
                 userSelect: 'none',
-                cursor: popping ? 'default' : 'pointer',
-                transition: popping ? 'transform 0.35s cubic-bezier(.6,1.5,.6,1), opacity 0.35s' : 'background 0.2s',
-                transform: popping ? 'scale(1.7) rotate(' + (Math.random() * 40 - 20) + 'deg)' : 'scale(1)',
-                opacity: popping ? 0 : 1,
-                zIndex: popping ? 100 : 1,
-                pointerEvents: popping ? 'none' : 'auto',
+                cursor: 'pointer',
+                transition: 'background 0.2s',
               }}
             >
               {word}
             </div>
+          );
+        })}
+        {/* パーティクル演出 */}
+        {particles.map(p => {
+          // 進行度 [0,1]
+          const progress = Math.min(1, (Date.now() - p.start) / p.duration);
+          const tx = Math.cos(p.angle) * p.dist * progress;
+          const ty = Math.sin(p.angle) * p.dist * progress;
+          const scale = 1 - progress * 0.7;
+          return (
+            <div
+              key={p.id}
+              style={{
+                position: 'absolute',
+                left: p.x - 8 + tx,
+                top: p.y - 8 + ty,
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                background: '#ffb347',
+                border: '2px solid #ff9800',
+                boxShadow: '0 1px 4px #e8b26c',
+                pointerEvents: 'none',
+                transform: `scale(${scale})`,
+                transition: 'none',
+                zIndex: 200,
+              }}
+            />
           );
         })}
       </div>
