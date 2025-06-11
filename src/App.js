@@ -20,6 +20,7 @@ function App() {
   const [input, setInput] = useState('');
   const [particles, setParticles] = useState([]); // パーティクル演出用
   const [pressing, setPressing] = useState({}); // { [word]: {start: timestamp, progress: 0~1, timerId} }
+  const [isLocked, setIsLocked] = useState(false); // 全削除演出中ロック
   const engineRef = useRef();
   const [_, setTick] = useState(0);
 
@@ -171,8 +172,9 @@ function App() {
           maxLength={12}
           placeholder="文字を入力"
           style={{ fontSize: 18, width: 180 }}
+          disabled={isLocked}
         />
-        <button type="submit" disabled={words.length >= MAX_WORDS}>登録</button>
+        <button type="submit" disabled={words.length >= MAX_WORDS || isLocked}>登録</button>
       </form>
       <div
         ref={sceneRef}
@@ -217,11 +219,12 @@ function App() {
                 color: '#444',
                 boxShadow: '0 2px 8px #aaa',
                 userSelect: 'none',
-                cursor: 'pointer',
+                cursor: isLocked ? 'not-allowed' : 'pointer',
                 transition: 'background 0.15s',
+                pointerEvents: isLocked ? 'none' : 'auto',
               }}
               onMouseDown={() => {
-                if (pressing[word]) return;
+                if (pressing[word] || isLocked) return;
                 const start = Date.now();
                 const timerId = setInterval(() => {
                   const now = Date.now();
@@ -230,7 +233,7 @@ function App() {
                   if (progress >= 1) {
                     clearInterval(timerId);
                     // --- 長押し最大時の同一文字全削除演出 ---
-                    // 今表示されている同じ文字のbodyを取得
+                    setIsLocked(true);
                     const sameBodies = Matter.Composite.allBodies(engineRef.current.world)
                       .filter(b => b.label === body.label);
                     // まず全削除
@@ -258,7 +261,8 @@ function App() {
                     });
                     setTimeout(() => {
                       setPressing(p => { const cp = { ...p }; delete cp[word]; return cp; });
-                    }, sameBodies.length * 100 + 100);
+                      setIsLocked(false);
+                    }, sameBodies.length * 100 + 300);
                   }
                 }, 30);
                 setPressing(p => ({ ...p, [word]: { start, progress: 0, timerId } }));
