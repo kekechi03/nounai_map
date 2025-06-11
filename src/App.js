@@ -233,21 +233,11 @@ function App() {
                     // 今表示されている同じ文字のbodyを取得
                     const sameBodies = Matter.Composite.allBodies(engineRef.current.world)
                       .filter(b => b.label === body.label);
+                    // まず全削除
+                    setWords(ws => ws.filter(w => w !== word));
+                    // パーティクル演出のみ0.1秒ずつずらして発動
                     sameBodies.forEach((b, i) => {
                       setTimeout(() => {
-                        // アイコン削除
-                        setWords(ws => {
-                          // 同じ位置の同じ単語だけ消す（重複対策）
-                          let removed = false;
-                          return ws.filter((w, idx2) => {
-                            if (!removed && w === word && idx2 === idx) {
-                              removed = true;
-                              return false;
-                            }
-                            return w !== word || idx2 !== idx;
-                          });
-                        });
-                        // パーティクル演出
                         const PARTICLE_COUNT = 10;
                         const newParticles = [];
                         for (let j = 0; j < PARTICLE_COUNT; j++) {
@@ -264,7 +254,7 @@ function App() {
                           });
                         }
                         setParticles(ps => [...ps, ...newParticles]);
-                      }, i * 100); // 0.1秒ずつずらす
+                      }, i * 100);
                     });
                     setTimeout(() => {
                       setPressing(p => { const cp = { ...p }; delete cp[word]; return cp; });
