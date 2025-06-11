@@ -16,6 +16,7 @@ function randomPositionInCircle(radius) {
 
 function App() {
   const sceneRef = useRef();
+  const mapAreaRef = useRef();
   const [words, setWords] = useState([]);
   const [input, setInput] = useState('');
   const [particles, setParticles] = useState([]); // パーティクル演出用
@@ -165,6 +166,10 @@ function App() {
   return (
     <div style={{ textAlign: 'center', marginTop: 30 }}>
       <h2>脳内マップ</h2>
+      <button onClick={handleCopy} disabled={isLocked} style={{marginRight: 16, padding: '6px 16px', fontSize: 15}}>
+        🖼️ コピー
+      </button>
+      {copyResult && <span style={{marginLeft: 8, color: copyResult.includes('失敗') ? 'red' : 'green'}}>{copyResult}</span>}
       <form onSubmit={handleAdd}>
         <input
           value={input}
@@ -177,7 +182,10 @@ function App() {
         <button type="submit" disabled={words.length >= MAX_WORDS || isLocked}>登録</button>
       </form>
       <div
-        ref={sceneRef}
+        ref={el => {
+          sceneRef.current = el;
+          mapAreaRef.current = el;
+        }}
         onClick={handleCanvasClick}
         style={{
           margin: '30px auto',
