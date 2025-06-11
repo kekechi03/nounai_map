@@ -199,7 +199,7 @@ function App() {
           const bgColor = `rgb(${r},${g},${b})`;
           return (
             <div
-              key={word}
+              key={word + '_' + idx}
               style={{
                 position: 'absolute',
                 left: body.position.x - 32,
@@ -229,6 +229,46 @@ function App() {
                   setPressing(p => ({ ...p, [word]: { start, progress, timerId } }));
                   if (progress >= 1) {
                     clearInterval(timerId);
+                    // --- 長押し最大時の同一文字全削除演出 ---
+                    // 今表示されている同じ文字のbodyを取得
+                    const sameBodies = Matter.Composite.allBodies(engineRef.current.world)
+                      .filter(b => b.label === body.label);
+                    sameBodies.forEach((b, i) => {
+                      setTimeout(() => {
+                        // アイコン削除
+                        setWords(ws => {
+                          // 同じ位置の同じ単語だけ消す（重複対策）
+                          let removed = false;
+                          return ws.filter((w, idx2) => {
+                            if (!removed && w === word && idx2 === idx) {
+                              removed = true;
+                              return false;
+                            }
+                            return w !== word || idx2 !== idx;
+                          });
+                        });
+                        // パーティクル演出
+                        const PARTICLE_COUNT = 10;
+                        const newParticles = [];
+                        for (let j = 0; j < PARTICLE_COUNT; j++) {
+                          const angle = (2 * Math.PI * j) / PARTICLE_COUNT + Math.random() * 0.12;
+                          const dist = 60 + Math.random() * 10;
+                          newParticles.push({
+                            id: `${word}_${Date.now()}_${i}_${j}`,
+                            x: b.position.x,
+                            y: b.position.y,
+                            angle,
+                            dist,
+                            start: Date.now(),
+                            duration: 400 + Math.random() * 120
+                          });
+                        }
+                        setParticles(ps => [...ps, ...newParticles]);
+                      }, i * 100); // 0.1秒ずつずらす
+                    });
+                    setTimeout(() => {
+                      setPressing(p => { const cp = { ...p }; delete cp[word]; return cp; });
+                    }, sameBodies.length * 100 + 100);
                   }
                 }, 30);
                 setPressing(p => ({ ...p, [word]: { start, progress: 0, timerId } }));
