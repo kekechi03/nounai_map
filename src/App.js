@@ -18,6 +18,36 @@ function App() {
   const sceneRef = useRef();
   const mapAreaRef = useRef();
   const [words, setWords] = useState([]);
+  const [userName, setUserName] = useState('');
+  const [isNameOnMap, setIsNameOnMap] = useState(false);
+  const [copyResult, setCopyResult] = useState(null);
+  // コピー処理
+  const handleCopy = async () => {
+    setCopyResult(null);
+    if (!mapAreaRef.current) return;
+    // 名前が入力されていれば一時的に表示
+    if (userName) setIsNameOnMap(true);
+    await new Promise(r => setTimeout(r, 30)); // React描画待ち
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(mapAreaRef.current, {backgroundColor: null});
+      canvas.toBlob(async (blob) => {
+        try {
+          await navigator.clipboard.write([
+            new window.ClipboardItem({ 'image/png': blob })
+          ]);
+          setCopyResult('画像をコピーしました！');
+        } catch (err) {
+          setCopyResult('クリップボードへのコピーに失敗しました');
+        }
+        setIsNameOnMap(false);
+      }, 'image/png');
+    } catch (e) {
+      setCopyResult('画像化に失敗しました');
+      setIsNameOnMap(false);
+    }
+  };
+
   const [input, setInput] = useState('');
   const [particles, setParticles] = useState([]); // パーティクル演出用
   const [pressing, setPressing] = useState({}); // { [word]: {start: timestamp, progress: 0~1, timerId} }
@@ -166,6 +196,16 @@ function App() {
   return (
     <div style={{ textAlign: 'center', marginTop: 30 }}>
       <h2>脳内マップ</h2>
+      <div style={{ display: 'inline-block', marginRight: 16 }}>
+        <input
+          value={userName}
+          onChange={e => setUserName(e.target.value)}
+          maxLength={16}
+          placeholder="お名前 (任意)"
+          style={{ fontSize: 16, padding: 4, width: 120, marginRight: 8 }}
+          disabled={isLocked}
+        />
+      </div>
       <button onClick={handleCopy} disabled={isLocked} style={{marginRight: 16, padding: '6px 16px', fontSize: 15}}>
         🖼️ コピー
       </button>
@@ -199,6 +239,22 @@ function App() {
           boxShadow: '0 0 10px #bbb',
         }}
       >
+        {isNameOnMap && userName && (
+          <div style={{
+            position: 'absolute',
+            top: 18,
+            left: 0,
+            width: '100%',
+            textAlign: 'center',
+            fontSize: 22,
+            fontWeight: 'bold',
+            color: '#1976d2',
+            letterSpacing: 1,
+            textShadow: '0 1px 6px #fff, 0 1px 12px #ddd',
+            zIndex: 10,
+            pointerEvents: 'none',
+          }}>{userName}</div>
+        )}
         {bodies.map((body, idx) => {
           const word = body.label.slice(5);
           const pressKey = word + '_' + idx;
