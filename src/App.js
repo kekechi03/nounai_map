@@ -226,11 +226,13 @@ function App() {
               onMouseDown={() => {
                 if (pressing[word] || isLocked) return;
                 const start = Date.now();
+                let reachedMax = false;
                 const timerId = setInterval(() => {
                   const now = Date.now();
                   const progress = Math.min(1, (now - start) / 1000);
                   setPressing(p => ({ ...p, [word]: { start, progress, timerId } }));
-                  if (progress >= 1) {
+                  if (progress >= 1 && !reachedMax) {
+                    reachedMax = true;
                     clearInterval(timerId);
                     // --- 長押し最大時の同一文字全削除演出 ---
                     setIsLocked(true);
@@ -265,11 +267,42 @@ function App() {
                     }, sameBodies.length * 100 + 300);
                   }
                 }, 30);
-                setPressing(p => ({ ...p, [word]: { start, progress: 0, timerId } }));
+                setPressing(p => ({ ...p, [word]: { start, progress: 0, timerId, reachedMax: false } }));
               }}
               onMouseUp={() => {
                 if (pressing[word]) {
                   clearInterval(pressing[word].timerId);
+                  // 進行度が1未満なら単体削除
+                  if ((pressing[word].progress || 0) < 1 && !isLocked) {
+                    // パーティクル演出（単体）
+                    const body = bodies[idx];
+                    const PARTICLE_COUNT = 10;
+                    const newParticles = [];
+                    for (let j = 0; j < PARTICLE_COUNT; j++) {
+                      const angle = (2 * Math.PI * j) / PARTICLE_COUNT + Math.random() * 0.12;
+                      const dist = 60 + Math.random() * 10;
+                      newParticles.push({
+                        id: `${word}_${Date.now()}_${idx}_${j}`,
+                        x: body.position.x,
+                        y: body.position.y,
+                        angle,
+                        dist,
+                        start: Date.now(),
+                        duration: 400 + Math.random() * 120
+                      });
+                    }
+                    setParticles(ps => [...ps, ...newParticles]);
+                    setWords(ws => {
+                      let removed = false;
+                      return ws.filter((w, i2) => {
+                        if (!removed && w === word && i2 === idx) {
+                          removed = true;
+                          return false;
+                        }
+                        return true;
+                      });
+                    });
+                  }
                   setPressing(p => { const cp = { ...p }; delete cp[word]; return cp; });
                 }
               }}
