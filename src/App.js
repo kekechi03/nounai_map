@@ -65,6 +65,9 @@ function App() {
       Events = Matter.Events;
 
     const engine = Engine.create();
+    // 重力を無効化
+    engine.world.gravity.y = 0;
+    engine.world.gravity.x = 0;
     engineRef.current = engine;
 
     // 円周上に多数の静的な壁を配置して外に出られないようにする
@@ -113,14 +116,14 @@ function App() {
       const pos = randomPositionInCircle(CIRCLE_RADIUS - 40);
       const body = Matter.Bodies.circle(pos.x, pos.y, 32, {
         label: `word:${word}`,
-        restitution: 0.9,
-        frictionAir: 0.02,
+        restitution: 0.98, // 反発強め
+        frictionAir: 0.002, // 空気抵抗弱め
         render: { visible: false }
       });
       // ランダムな速度で漂う
       Matter.Body.setVelocity(body, {
-        x: (Math.random() - 0.5) * 2,
-        y: (Math.random() - 0.5) * 2,
+        x: (Math.random() - 0.5) * 8,
+        y: (Math.random() - 0.5) * 8
       });
       Matter.World.add(engine.world, body);
     });
@@ -321,7 +324,7 @@ function App() {
                             angle,
                             dist,
                             start: Date.now(),
-                            duration: 400 + Math.random() * 120
+                            duration: 200 + Math.random() * 120
                           });
                         }
                         setParticles(ps => [...ps, ...newParticles]);
@@ -353,7 +356,7 @@ function App() {
                         angle,
                         dist,
                         start: Date.now(),
-                        duration: 400 + Math.random() * 120
+                        duration: 200 + Math.random() * 120
                       });
                     }
                     setParticles(ps => [...ps, ...newParticles]);
