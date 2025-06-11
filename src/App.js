@@ -193,7 +193,8 @@ function App() {
       >
         {bodies.map((body, idx) => {
           const word = body.label.slice(5);
-          const press = pressing[word] || { progress: 0 };
+          const pressKey = word + '_' + idx;
+          const press = pressing[pressKey] || { progress: 0 };
           // 色補間: progress=0で白、progress=1で赤
           const r = Math.round(255 * (1 - press.progress) + 255 * press.progress);
           const g = Math.round(255 * (1 - press.progress));
@@ -201,7 +202,7 @@ function App() {
           const bgColor = `rgb(${r},${g},${b})`;
           return (
             <div
-              key={word + '_' + idx}
+              key={pressKey}
               style={{
                 position: 'absolute',
                 left: body.position.x - 32,
@@ -224,16 +225,17 @@ function App() {
                 pointerEvents: isLocked ? 'none' : 'auto',
               }}
               onMouseDown={() => {
-                if (pressing[word] || isLocked) return;
+                if (pressing[pressKey] || isLocked) return;
                 const start = Date.now();
                 let reachedMax = false;
                 const timerId = setInterval(() => {
                   const now = Date.now();
                   const progress = Math.min(1, (now - start) / 1000);
-                  setPressing(p => ({ ...p, [word]: { start, progress, timerId } }));
+                  setPressing(p => ({ ...p, [pressKey]: { start, progress, timerId, reachedMax: false } }));
                   if (progress >= 1 && !reachedMax) {
                     reachedMax = true;
                     clearInterval(timerId);
+                    setPressing(p => { const cp = { ...p }; delete cp[pressKey]; return cp; });
                     // --- 長押し最大時の同一文字全削除演出 ---
                     setIsLocked(true);
                     const sameBodies = Matter.Composite.allBodies(engineRef.current.world)
@@ -262,18 +264,17 @@ function App() {
                       }, i * 100);
                     });
                     setTimeout(() => {
-                      setPressing(p => { const cp = { ...p }; delete cp[word]; return cp; });
                       setIsLocked(false);
                     }, sameBodies.length * 100 + 300);
                   }
                 }, 30);
-                setPressing(p => ({ ...p, [word]: { start, progress: 0, timerId, reachedMax: false } }));
+                setPressing(p => ({ ...p, [pressKey]: { start, progress: 0, timerId, reachedMax: false } }));
               }}
               onMouseUp={() => {
-                if (pressing[word]) {
-                  clearInterval(pressing[word].timerId);
+                if (pressing[pressKey]) {
+                  clearInterval(pressing[pressKey].timerId);
                   // 進行度が1未満なら単体削除
-                  if ((pressing[word].progress || 0) < 1 && !isLocked) {
+                  if ((pressing[pressKey].progress || 0) < 1 && !isLocked) {
                     // パーティクル演出（単体）
                     const body = bodies[idx];
                     const PARTICLE_COUNT = 10;
@@ -303,13 +304,13 @@ function App() {
                       });
                     });
                   }
-                  setPressing(p => { const cp = { ...p }; delete cp[word]; return cp; });
+                  setPressing(p => { const cp = { ...p }; delete cp[pressKey]; return cp; });
                 }
               }}
               onMouseLeave={() => {
-                if (pressing[word]) {
-                  clearInterval(pressing[word].timerId);
-                  setPressing(p => { const cp = { ...p }; delete cp[word]; return cp; });
+                if (pressing[pressKey]) {
+                  clearInterval(pressing[pressKey].timerId);
+                  setPressing(p => { const cp = { ...p }; delete cp[pressKey]; return cp; });
                 }
               }}
             >
